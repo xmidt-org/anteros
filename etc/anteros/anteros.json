@@ -1,0 +1,28 @@
+{
+	"primary": {
+		"address": ":6000",
+		"keyfile": "",
+		"certificatefile": ""
+	},
+
+	"health": {
+		"address": ":6001"
+	},
+
+	"pprof": {
+		"address": ":6002"
+	},
+	
+	"hostRedirects": {
+		"webpa": "api.webpa.comcast.net:8090",
+		"xmidt": "api-cd.xmidt.comcast.net:8090"
+	},
+	
+	"responseTimeout": "60s",
+	
+	"log" : {
+		"file": "stdout",
+		"level": "DEBUG",
+		"json": true
+	}
+}
