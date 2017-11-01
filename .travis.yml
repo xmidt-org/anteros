@@ -28,7 +28,7 @@ script:
     - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then docker exec build bash -c "pushd anteros; ./build_rpm.sh; popd"; fi'
 
 after_success:
-    #- docker exec build bash -c "pushd codecovio_build ; bash <(curl -s https://codecov.io/bash) -t 2781430c-d1d8-4abd-9b17-f329b8fd97ac; popd"
+    - docker exec build bash -c "pushd codecovio_build ; bash <(curl -s https://codecov.io/bash) -t 6bac2307-e8c2-4e87-8998-849a5c394953; popd"
     - docker cp build:/root/rpmbuild/RPMS/x86_64 .
     - docker cp build:/versionno.txt .
     - BINARY_NAME=`ls x86_64/`
