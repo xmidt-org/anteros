@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package main
 
 import (
@@ -7,7 +25,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
-	
+
 	"github.com/Comcast/webpa-common/logging"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
@@ -15,15 +33,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-
 // newClient returns an http.Client to make send requests
 func newClient(logger log.Logger, v *viper.Viper, scheme string) (client http.Client, err error) {
-	timeout, err := time.ParseDuration( v.GetString("responseTimeout") )
+	timeout, err := time.ParseDuration(v.GetString("responseTimeout"))
 	if err != nil {
-		level.Error(logger).Log( logging.MessageKey(), "Error parsing response timeout as duration", "Error", err )
+		level.Error(logger).Log(logging.MessageKey(), "Error parsing response timeout as duration", "Error", err)
 		return
 	}
-	
+
 	tr := &http.Transport{
 		TLSHandshakeTimeout: 5 * time.Second,
 		DialContext: (&net.Dialer{
@@ -32,11 +49,11 @@ func newClient(logger log.Logger, v *viper.Viper, scheme string) (client http.Cl
 		}).DialContext,
 		DisableKeepAlives: true,
 	}
-	
+
 	if strings.HasPrefix(scheme, "https") {
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-	
+
 	client = http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -44,7 +61,7 @@ func newClient(logger log.Logger, v *viper.Viper, scheme string) (client http.Cl
 		Transport: tr,
 		Timeout:   timeout,
 	}
-	
+
 	return
 }
 
@@ -53,19 +70,19 @@ func redirect(logger log.Logger, client http.Client, respResultChan chan *respRe
 	u := *req.URL
 	u.Scheme = req.URL.Scheme
 	u.Host = rr.hostValue
-	reqCopy, err := http.NewRequest(req.Method, u.String(), req.Body)  // todo: this should be better
+	reqCopy, err := http.NewRequest(req.Method, u.String(), req.Body) // todo: this should be better
 	if err != nil {
-		level.Error(logger).Log( logging.MessageKey(), "Error creating reqeust copy.", "Request", reqCopy, "Error", err )
+		level.Error(logger).Log(logging.MessageKey(), "Error creating reqeust copy.", "Request", reqCopy, "Error", err)
 		return
 	}
 	reqCopy.Header = req.Header
-	
+
 	rr.response, rr.err = client.Do(reqCopy)
 	if rr.err != nil {
-		level.Error(logger).Log( logging.MessageKey(), "Redirect host response error.", "Request", reqCopy, "Error", rr.err )
+		level.Error(logger).Log(logging.MessageKey(), "Redirect host response error.", "Request", reqCopy, "Error", rr.err)
 		return
 	}
-	
+
 	respResultChan <- rr
 }
 
@@ -73,20 +90,20 @@ func redirect(logger log.Logger, client http.Client, respResultChan chan *respRe
 func responseEvaluation(logger log.Logger, hostResp *http.Response) (ok bool) {
 	// check for nil response
 	if hostResp == nil {
-		level.Debug(logger).Log( logging.MessageKey(), "XMiDT host response was nil" )
+		level.Debug(logger).Log(logging.MessageKey(), "XMiDT host response was nil")
 		return
 	}
-	
-	level.Debug(logger).Log( logging.MessageKey(), "XMiDT Response", "StatusCode", hostResp.StatusCode)
-	
+
+	level.Debug(logger).Log(logging.MessageKey(), "XMiDT Response", "StatusCode", hostResp.StatusCode)
+
 	if hostResp.StatusCode == 400 ||
-	   hostResp.StatusCode == 404 ||
-	   hostResp.StatusCode == 500 ||
-	   hostResp.StatusCode == 503 ||
-	   hostResp.StatusCode == 504 {
+		hostResp.StatusCode == 404 ||
+		hostResp.StatusCode == 500 ||
+		hostResp.StatusCode == 503 ||
+		hostResp.StatusCode == 504 {
 		return
 	}
-	
+
 	return
 }
 
@@ -99,28 +116,28 @@ type respResult struct {
 
 func NewPrimaryHandler(logger log.Logger, v *viper.Viper) (http.Handler, error) {
 	router := mux.NewRouter()
-	
+
 	h := func(resp http.ResponseWriter, req *http.Request) {
 		// create client to send requests
 		client, err := newClient(logger, v, req.URL.Scheme)
 		if err != nil {
-			http.Error( resp, err.Error(), http.StatusInternalServerError )
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
 		}
-		
+
 		// send requests to redirect hosts
 		hosts := v.GetStringMapString("hostRedirects")
 		hostRespChan := make(chan *respResult, 1)
 		for k, v := range hosts {
 			go redirect(logger, client, hostRespChan, req, &respResult{hostName: k, hostValue: v})
 		}
-		
+
 		// collect responses
 		var respXMiDT *respResult
 		var respWebPA *respResult
 		for respXMiDT == nil || respWebPA == nil {
 			select {
-			case rr := <- hostRespChan:
-				if rr.hostName == "xmidt" { 
+			case rr := <-hostRespChan:
+				if rr.hostName == "xmidt" {
 					respXMiDT = rr
 				}
 				if rr.hostName == "webpa" {
@@ -129,25 +146,25 @@ func NewPrimaryHandler(logger log.Logger, v *viper.Viper) (http.Handler, error) 
 			}
 		}
 		close(hostRespChan)
-		
+
 		// evaluate responses
 		finalResponse := respXMiDT
 		if !responseEvaluation(logger, respXMiDT.response) {
-			level.Debug(logger).Log( logging.MessageKey(), "XMiDT response was determined to be unacceptable.  Using WebPA request." )
+			level.Debug(logger).Log(logging.MessageKey(), "XMiDT response was determined to be unacceptable.  Using WebPA request.")
 			finalResponse = respWebPA
 		}
 		if finalResponse.err != nil {
-			http.Error( resp, finalResponse.err.Error(), http.StatusInternalServerError )
+			http.Error(resp, finalResponse.err.Error(), http.StatusInternalServerError)
 		}
-		
-		level.Debug(logger).Log( logging.MessageKey(), "Final Response", "host", finalResponse.hostName, "StatusCode", finalResponse.response.StatusCode )
-		
+
+		level.Debug(logger).Log(logging.MessageKey(), "Final Response", "host", finalResponse.hostName, "StatusCode", finalResponse.response.StatusCode)
+
 		// create response to return
 		b, err := ioutil.ReadAll(finalResponse.response.Body)
 		if err != nil {
-			http.Error( resp, err.Error(), http.StatusInternalServerError )
+			http.Error(resp, err.Error(), http.StatusInternalServerError)
 		}
-		
+
 		// copy over response header values to ResponseWriter
 		for key, values := range finalResponse.response.Header {
 			for i, value := range values {
@@ -158,12 +175,12 @@ func NewPrimaryHandler(logger log.Logger, v *viper.Viper) (http.Handler, error) 
 				}
 			}
 		}
-		
+
 		resp.WriteHeader(finalResponse.response.StatusCode)
-		
+
 		resp.Write(b)
 	}
 	router.PathPrefix("/").HandlerFunc(h)
-	
+
 	return router, nil
 }
