@@ -61,7 +61,7 @@ stop() {
 	echo -n $"Stopping anteros: "
 	kill $(cat /var/run/anteros.pid)
 	RETVAL=$?
-    rm -f /var/run/anteros.pid
+	rm -f /var/run/anteros.pid
 	echo
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/anteros
 }
