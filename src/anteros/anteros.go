@@ -45,7 +45,7 @@ func anteros(arguments []string) int {
 		f = pflag.NewFlagSet(applicationName, pflag.ContinueOnError)
 		v = viper.New()
 
-		logger, webPA, err = server.Initialize(applicationName, arguments, f, v)
+		logger, metricsRegistry, webPA, err = server.Initialize(applicationName, arguments, f, v)
 	)
 
 	if err != nil {
@@ -54,15 +54,16 @@ func anteros(arguments []string) int {
 	}
 
 	logger.Log(level.Key(), level.InfoValue(), "configurationFile", v.ConfigFileUsed())
+	anterosHealth := webPA.Health.NewHealth(logger, getAnterosHealthOptions()...)
 
-	primaryHandler, err := NewPrimaryHandler(logger, v)
+	primaryHandler, err := NewPrimaryHandler(logger, anterosHealth, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.ErrorKey(), err, logging.MessageKey(), "unable to create primary handler")
 		return 2
 	}
 
 	var (
-		_, runnable = webPA.Prepare(logger, nil, primaryHandler)
+		_, runnable = webPA.Prepare(logger, anterosHealth, metricsRegistry, primaryHandler)
 		signals     = make(chan os.Signal, 1)
 	)
 
