@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Comcast/webpa-common/health"
 	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/log"
 	"github.com/go-kit/kit/log/level"
 	"github.com/spf13/viper"
@@ -148,11 +148,11 @@ func (h *primaryHandler) collector(hostRespChan chan *respResult, resultChan cha
 		case rr := <-hostRespChan:
 			if rr.hostName == "xmidt" {
 				results.xmidt = rr
-				healthEvent(h.health, ResponseRecievedXMiDT)
+				h.metrics.ResponseReceivedXMiDT.Add(1.0)
 			}
 			if rr.hostName == "webpa" {
 				results.webpa = rr
-				healthEvent(h.health, ResponseRecievedWebPA)
+				h.metrics.ResponseReceivedWebPA.Add(1.0)
 			}
 		}
 	}
@@ -185,7 +185,7 @@ type respResult struct {
 
 type primaryHandler struct {
 	client  http.Client
-	health  *health.Health
+	metrics Metrics
 	hosts   map[string]string
 	logger  log.Logger
 	timeout time.Duration
@@ -201,8 +201,8 @@ func (h *primaryHandler) setHosts(hosts map[string]string) {
 	h.hosts = hosts
 }
 
-func (h *primaryHandler) setHealth(health *health.Health) {
-	h.health = health
+func (h *primaryHandler) setMetrics(registry xmetrics.Registry) {
+	h.metrics = AddMetrics(registry)
 }
 
 // setLogger sets a logger for the primary logger
@@ -221,10 +221,10 @@ func (h *primaryHandler) setViper(v *viper.Viper) {
 }
 
 // NewPrimaryHandler returns a new primaryHanndler with app
-func NewPrimaryHandler(logger log.Logger, health *health.Health, v *viper.Viper) (http.Handler, error) {
+func NewPrimaryHandler(logger log.Logger, registry xmetrics.Registry, v *viper.Viper) (http.Handler, error) {
 	h := &primaryHandler{}
 	h.setLogger(logger)
-	h.setHealth(health)
+	h.setMetrics(registry)
 	h.setViper(v)
 	h.setHosts(v.GetStringMapString("hostRedirects"))
 
@@ -270,11 +270,11 @@ func (h *primaryHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) 
 	// evaluate responses
 	finalResponse := results.xmidt
 	if h.evaluateXMiDTResponse(finalResponse.response) {
-		healthEvent(h.health, ResponseUsedXMiDT)
+		h.metrics.ResponseUsedXMiDT.Add(1.0)
 	} else {
 		level.Debug(h.logger).Log(logging.MessageKey(), "XMiDT response was determined to be unacceptable.  Using WebPA request.")
 		finalResponse = results.webpa
-		healthEvent(h.health, ResponseUsedWebPA)
+		h.metrics.ResponseUsedWebPA.Add(1.0)
 	}
 	if finalResponse.err != nil {
 		http.Error(resp, finalResponse.err.Error(), http.StatusInternalServerError)

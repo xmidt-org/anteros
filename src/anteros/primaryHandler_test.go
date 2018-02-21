@@ -26,7 +26,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Comcast/webpa-common/health"
+	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/log"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -73,15 +73,16 @@ func testMakePrimaryHandler(assert *assert.Assertions) *primaryHandler {
 	logger := testMakeLogger()
 	timeout, err := parseTimeout(logger, v)
 	testCheckError(assert, err)
-	h := health.New(time.Second*60, logger, getAnterosHealthOptions()...)
-
+	registry, err := xmetrics.NewRegistry(nil)
+	testCheckError(assert, err)
+	
 	p := &primaryHandler{
 		client:  newClient(timeout, "https"),
 		hosts:   v.GetStringMapString("hostRedirects"),
 		logger:  logger,
+		metrics: AddMetrics(registry),
 		timeout: timeout,
 		v:       v,
-		health:  h,
 	}
 
 	return p

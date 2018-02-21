@@ -20,6 +20,7 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
+	"os/signal"
 
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
@@ -54,27 +55,33 @@ func anteros(arguments []string) int {
 	}
 
 	logger.Log(level.Key(), level.InfoValue(), "configurationFile", v.ConfigFileUsed())
-	anterosHealth := webPA.Health.NewHealth(logger, getAnterosHealthOptions()...)
 
-	primaryHandler, err := NewPrimaryHandler(logger, anterosHealth, v)
+	primaryHandler, err := NewPrimaryHandler(logger, metricsRegistry, v)
 	if err != nil {
 		logger.Log(level.Key(), level.ErrorValue(), logging.ErrorKey(), err, logging.MessageKey(), "unable to create primary handler")
 		return 2
 	}
 
 	var (
-		_, runnable = webPA.Prepare(logger, anterosHealth, metricsRegistry, primaryHandler)
+		_, anterosServer = webPA.Prepare(logger, nil, metricsRegistry, primaryHandler)
 		signals     = make(chan os.Signal, 1)
 	)
+	signal.Notify(signals, os.Interrupt, os.Kill)
 
 	//
-	// Execute the runnable, which runs all the servers, and wait for a signal
+	// Execute the anterosServer, which runs all the servers, and wait for a signal
 	//
-
-	if err := concurrent.Await(runnable, signals); err != nil {
-		fmt.Fprintf(os.Stderr, "Error when starting %s: %s", applicationName, err)
+	waitGroup, shutdown, err := concurrent.Execute(anterosServer)
+	if err != nil {
+		logger.Log(logging.MessageKey(), "Unable to start anteros", logging.ErrorKey(), err)
 		return 4
 	}
+
+	signal.Notify(signals)
+	s := server.SignalWait(logger, signals, os.Kill, os.Interrupt)
+	logger.Log(logging.MessageKey(), "exiting due to signal", "signal", s)
+	close(shutdown)
+	waitGroup.Wait()
 
 	return 0
 }
