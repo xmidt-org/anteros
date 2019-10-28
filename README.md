@@ -1,15 +1,18 @@
 # anteros
 
-[![Build Status](https://travis-ci.org/Comcast/anteros.svg?branch=master)](https://travis-ci.org/Comcast/anteros) 
-[![codecov.io](http://codecov.io/github/Comcast/anteros/coverage.svg?branch=master)](http://codecov.io/github/Comcast/anteros?branch=master)
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 [![Go Report Card](https://goreportcard.com/badge/github.com/Comcast/anteros)](https://goreportcard.com/report/github.com/Comcast/anteros)
 [![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/Comcast/anteros/blob/master/LICENSE)
 
 The webpa upgrade redirection server.
 
-# How to Install
+## Archived
 
-## Centos 6
+This project has been archived.  No future work will be done here.
+
+## How to Install
+
+### Centos 6
 
 1. Import the public GPG key (replace `0.0.1-65` with the release you want)
 
