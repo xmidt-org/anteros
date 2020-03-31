@@ -14,8 +14,8 @@
 	},
 	
 	"hostRedirects": {
-		"webpa": "api.webpa.comcast.net:8090",
-		"xmidt": "api-cd.xmidt.comcast.net:8090"
+		"webpa": "foo.webpa.com:6005",
+		"xmidt": "foo.xmidt.com:6006"
 	},
 	
 	"responseTimeout": "60s",

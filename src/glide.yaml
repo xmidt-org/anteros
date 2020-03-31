@@ -1,14 +1,4 @@
 package: .
 import:
 - package: github.com/Comcast/webpa-common
-  subpackages:
-  - concurrent
-  - logging
-  - server
-- package: github.com/go-kit/kit
-  subpackages:
-  - log
-  - log/level
-- package: github.com/gorilla/mux
-- package: github.com/spf13/pflag
-- package: github.com/spf13/viper
+  version: 49d31397e019541d27795f8543e634ab0846ed82
